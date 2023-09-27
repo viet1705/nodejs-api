@@ -1,0 +1,62 @@
+version: "3.7"
+
+services:
+  app:
+    build:
+      context: ./
+      target: development-build-stage
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    image: test-img
+    container_name: test-app
+    restart: unless-stopped
+    networks:
+      - test
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: "mysql:8.0"
+    container_name: test-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${TYPEORM_PASSWORD}"
+      MYSQL_DATABASE: "${TYPEORM_DATABASE}"
+      MYSQL_USER: "${TYPEORM_USERNAME}"
+      MYSQL_PASSWORD: "${TYPEORM_PASSWORD}"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "${FORWARD_DB_PORT:-3306}:3306"
+    volumes:
+      - "test-mysql:/var/lib/mysql"
+    networks:
+      - test
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping" ]
+
+  redis:
+    image: "redis:alpine"
+    container_name: test-redis
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_REDIS_PORT:-6379}:6379"
+    volumes:
+      - "test-redis:/data"
+    networks:
+      - test
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+
+networks:
+  test:
+    driver: bridge
+
+volumes:
+  test-mysql:
+    driver: local
+  test-redis:
+    driver: local
